@@ -24,6 +24,8 @@ const config = {
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const bot = new Telegraf(BOT_TOKEN);
+const PORT = process.env.PORT || 3000;
+const URL = process.env.URL || "https://usenear.herokuapp.com/";
 
 let TOKEN_ID = 0;
 
@@ -31,6 +33,9 @@ let chatIdToMintbaseStoreMapping = new Map();
 
 // Session storage.
 bot.use((new LocalSession({ database: "example_db.json "})).middleware());
+
+bot.telegram.setWebhook(`${URL}/bot${BOT_TOKEN}`);
+bot.startWebhook(`/bot${BOT_TOKEN}`, null, PORT);
 
 bot.on("new_chat_members", async (ctx) => {
     const possibleWallets = await checkIfWalletEverConnected(ctx.message.from.username);
@@ -50,7 +55,7 @@ bot.on("new_chat_members", async (ctx) => {
     }
 });
 
-bot.start(async (ctx) => {
+bot.command("/start", async (ctx) => {
     ctx.session.near = near;
     ctx.session.account = undefined;
     bot.telegram.sendMessage(ctx.chat.id, "<code>Welcome to useNear!</code>", {
@@ -61,8 +66,7 @@ bot.start(async (ctx) => {
             ]
         }
     });
-});
-
+})
 
 // Bot hooks
 
@@ -570,4 +574,4 @@ bot.command("/getproposal", (ctx) => {
 //     console.log(isDuplicate);
 // })
 
-bot.launch();
+// bot.launch();
