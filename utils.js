@@ -43,7 +43,7 @@ const checkIfKeyPairExists = async (telegramId, accountId) => {
     const accountIdSplit = accountId.split(".");
     const networkId = accountIdSplit[accountIdSplit.length - 1];
     try {
-        let file = await readFile(`.near-credentials/${networkId}/${telegramId}_${accountId}.json`, "utf-8");
+        let file = await readFile(`./.near-credentials/${networkId}/${telegramId}_${accountId}.json`, "utf-8");
         return file ? file : 0;
     } catch(e) {
         return 0;
@@ -52,7 +52,7 @@ const checkIfKeyPairExists = async (telegramId, accountId) => {
 
 const addKeyPair = async (ctx, networkId, accountId, keyPair) => {
     const content = { account_id: accountId, public_key: keyPair.publicKey.toString(), private_key: keyPair.toString() };
-    await writeFile(`.near-credentials/${networkId}/${ctx.from.username}_${accountId}.json`, JSON.stringify(content));    
+    await writeFile(`./.near-credentials/${networkId}/${ctx.from.username}_${accountId}.json`, JSON.stringify(content));    
     return content.private_key;
 }
 
