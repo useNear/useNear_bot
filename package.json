@@ -1,0 +1,21 @@
+{
+  "name": "tg-demo-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.21.4",
+    "mintbase": "^0.2.1",
+    "near-api-js": "^0.42.0",
+    "nft.storage": "^3.2.0",
+    "request": "^2.88.2",
+    "telegraf": "^4.4.1",
+    "telegraf-session-local": "^2.1.0"
+  }
+}
