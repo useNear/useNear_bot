@@ -1,3 +1,4 @@
+require("dotenv").config();
 const fs = require("fs");
 const util = require("util");
 const { KeyPair, utils } = require("near-api-js");
@@ -14,7 +15,7 @@ const writeFile = util.promisify(fs.writeFile);
 const deleteFile = util.promisify(fs.unlink);
 const readdir = util.promisify(fs.readdir);
 
-const Client = new NFTStorage({ token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDUyNzE4MWUwY2JhNjNjNjQ4NWFjMDEyNjBBMjAyZUE2ZDk1NzAxRWMiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTYzMTE2ODU1MjgwNywibmFtZSI6InRnLWJvdCJ9.Qjsmm2I7GG1LTZjNhrbxGPSsyUQU_YXgkWQ0e_Q052c" });
+const Client = new NFTStorage({ token: process.env.NFT_STORAGE_TOKEN });
 
 const mintbaseAPI = new API({
     constants: {

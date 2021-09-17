@@ -1,5 +1,7 @@
+require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
 const nearAPI = require("near-api-js");
+
 const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal } = require("./utils");
 const { utils } = require("near-api-js");
 const { connect, keyStores, KeyPair } = nearAPI;
@@ -19,7 +21,7 @@ const config = {
     explorerUrl: "https://explorer.testnet.near.org"
 }
 
-const BOT_TOKEN = "1952714369:AAFEBbG98jSzPX3gm-ZPnE45tMETwlUg9UU";
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const bot = new Telegraf(BOT_TOKEN);
 
