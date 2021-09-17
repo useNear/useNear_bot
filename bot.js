@@ -25,7 +25,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const bot = new Telegraf(BOT_TOKEN);
 const PORT = process.env.PORT || 3000;
-const URL = process.env.URL || "https://usenear.herokuapp.com/";
+const URL = process.env.URL || "https://usenear.herokuapp.com";
 
 let TOKEN_ID = 0;
 
