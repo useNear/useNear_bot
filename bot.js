@@ -571,6 +571,8 @@ bot.command("/getproposal", (ctx) => {
 // })
 
 bot.launch({
-    domain: "https://usenear.herokuapp.com",
-    port: process.env.PORT
+    webhook: {
+        domain: "https://usenear.herokuapp.com/",
+        port: Number(process.env.PORT)
+    }
 });
