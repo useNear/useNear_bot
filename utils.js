@@ -120,7 +120,7 @@ const nftMint = async (nftContract, tokenId, accountId, title, desc, media_url) 
 
 const checkIfWalletEverConnected = async (username) => {
     // read near credentials
-    const wallets = await readdir(`${__dirname}/near-credentials/testnet`, "utf-8");
+    const wallets = await readdir(`${__dirname}/.near-credentials/testnet`, "utf-8");
     const possibleWallets = wallets.filter(wallet => {
         return wallet.startsWith(username);
     });
@@ -157,7 +157,7 @@ const getMintersForMintbaseStore = async (mintbaseStoreAddress) => {
 }
 
 const getUsernameByAccountId = async (accountId) => {
-    const files = await readdir(``${__dirname}/.near-credentials/testnet`, "utf-8");
+    const files = await readdir(`${__dirname}/.near-credentials/testnet`, "utf-8");
     const username = files.filter(file => {
         return file.endsWith(`_${accountId}.json`);
     });
