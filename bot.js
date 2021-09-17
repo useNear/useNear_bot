@@ -163,7 +163,7 @@ bot.use((ctx, next) => {
                     break;
                 case "Enter the account you used to connect":
                     (async () => {
-                        bot.telegram.sendChatAction("typing");
+                        bot.telegram.sendChatAction(ctx.message.chat.id, "typing");
                         const accountId = ctx.message.text;
                         if(accountId && ctx.session.keyPair) {
                             let near = await connect(config);

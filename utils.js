@@ -52,7 +52,7 @@ const checkIfKeyPairExists = async (telegramId, accountId) => {
 
 const addKeyPair = async (ctx, networkId, accountId, keyPair) => {
     const content = { account_id: accountId, public_key: keyPair.publicKey.toString(), private_key: keyPair.toString() };
-    await writeFile(`./.near-credentials/${networkId}/${ctx.from.username}_${accountId}.json`, JSON.stringify(content));    
+    await writeFile(`${__dirname}/.near-credentials/${networkId}/${ctx.from.username}_${accountId}.json`, JSON.stringify(content));    
     return content.private_key;
 }
 
@@ -62,8 +62,8 @@ const uploadToNFTStorage = async (ctx, title, description, filePath) => {
     let response  = await requestGet({ url: filePath, encoding: "binary" });
     let titleSplit = title.split(" ");
     title = titleSplit.join("_");
-    await writeFile(`./nft_assets/nft_${ctx.from.username}.jpg`, response.body, "binary");
-    let fileLocation = `./nft_assets/nft_${ctx.from.username}.jpg`;
+    await writeFile(`${__dirname}/nft_assets/nft_${ctx.from.username}.jpg`, response.body, "binary");
+    let fileLocation = `${__dirname}/nft_assets/nft_${ctx.from.username}.jpg`;
     const fileLocationSplit = fileLocation.split(".");
     const fileType = fileLocationSplit[fileLocationSplit.length - 1];
     const fileData = await readFile(fileLocation);
@@ -120,7 +120,7 @@ const nftMint = async (nftContract, tokenId, accountId, title, desc, media_url) 
 
 const checkIfWalletEverConnected = async (username) => {
     // read near credentials
-    const wallets = await readdir(".near-credentials/testnet", "utf-8");
+    const wallets = await readdir(`${__dirname}/near-credentials/testnet`, "utf-8");
     const possibleWallets = wallets.filter(wallet => {
         return wallet.startsWith(username);
     });
@@ -157,7 +157,7 @@ const getMintersForMintbaseStore = async (mintbaseStoreAddress) => {
 }
 
 const getUsernameByAccountId = async (accountId) => {
-    const files = await readdir(".near-credentials/testnet", "utf-8");
+    const files = await readdir(``${__dirname}/.near-credentials/testnet`, "utf-8");
     const username = files.filter(file => {
         return file.endsWith(`_${accountId}.json`);
     });
