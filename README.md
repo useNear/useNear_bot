@@ -14,6 +14,11 @@ useNear lets you access NEAR Protocol DApps using Telegram.
 * Mintbase SDK
 * near-api-js
 
+## Run Locally
+* Get bot token from @botfather telegram.
+* Get NFT.Storage API key
+* Create .env file and put the token (`TELEGRAM_BOT_TOKEN`) and API key (`NFT_STORAGE_TOKEN`) there.
+* Run the bot using `node bot.js`.
 
 ## Supported Commands
 * /start - Connect Wallet
