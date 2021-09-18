@@ -33,4 +33,6 @@ useNear lets you access NEAR Protocol DApps using Telegram.
 * Prepare Documentation so that anyone can integrate their own DApps with these bot.
 
 ### Bot Link - https://t.me/usenear_bot
+### If bot doesn't respond possibly the server is down 😅 - Contact @jezeus on telegram.
+
 
