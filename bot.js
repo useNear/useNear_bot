@@ -33,7 +33,25 @@ let chatIdToMintbaseStoreMapping = new Map();
 bot.use((new LocalSession({ database: "example_db.json "})).middleware());
 
 
-bot.start(async (ctx) => {
+bot.on("new_chat_members", async (ctx) => {
+    const possibleWallets = await checkIfWalletEverConnected(ctx.message.from.username);
+    if(possibleWallets.length > 0) {
+        const mintbaseStoreAddress = chatIdToMintbaseStoreMapping.get(ctx.message.chat.id);
+        let isMinter = await checkIfPossibleWalletIsAMinter(possibleWallets, mintbaseStoreAddress);
+        if(isMinter) {
+            bot.telegram.sendMessage(ctx.message.chat.id, `Welcome @${ctx.message.from.username}!`);
+        } else {
+            bot.telegram.sendMessage(ctx.message.chat.id, `@${ctx.message.from.username} is not a minter at ${mintbaseStoreAddress}`);
+            ctx.kickChatMember(ctx.message.from.id, 0);
+        }
+    } else {
+        bot.telegram.sendMessage(ctx.message.chat.id, "Please connect wallet with @tg_demo_v1_bot using private chat.");
+        bot.telegram.sendMessage(ctx.message.chat.id, `@${ctx.message.from.id} was removed`);
+        ctx.kickChatMember(ctx.message.from.id, 0);
+    }
+});
+
+bot.command("/start", async (ctx) => {
     ctx.session.near = near;
     ctx.session.account = undefined;
     bot.telegram.sendMessage(ctx.chat.id, "<code>Welcome to useNear!</code>", {
@@ -44,25 +62,10 @@ bot.start(async (ctx) => {
             ]
         }
     });
-});
-
+})
 
 // Bot hooks
-bot.on("new_chat_members", async (ctx) => {
-    const possibleWallets = await checkIfWalletEverConnected(ctx.message.from.username);
-    if(possibleWallets.length > 0) {
-        const mintbaseStoreAddress = chatIdToMintbaseStoreMapping.get(ctx.message.chat.id);
-        let isMinter = await checkIfPossibleWalletIsAMinter(possibleWallets, mintbaseStoreAddress);
-        if(isMinter) {
-            bot.telegram.sendMessage(ctx.message.chat.id, `Welcome @${ctx.message.from.username}!`);
-        } else {
-            ctx.kickChatMember(ctx.message.from.id, 0);
-            bot.telegram.sendMessage(ctx.message.chat.id, `@${ctx.message.from.username} is not a minter at ${mintbaseStoreAddress}`);
-        }
-    } else {
-        bot.telegram.sendMessage(ctx.message.chat.id, "Please connect wallet with @tg_demo_v1_bot using private chat.");
-    }
-});
+
 
 
 bot.on("left_chat_member", (ctx) => {
@@ -160,7 +163,7 @@ bot.use((ctx, next) => {
                     break;
                 case "Enter the account you used to connect":
                     (async () => {
-                        bot.telegram.sendChatAction("typing");
+                        bot.telegram.sendChatAction(ctx.message.chat.id, "typing");
                         const accountId = ctx.message.text;
                         if(accountId && ctx.session.keyPair) {
                             let near = await connect(config);
@@ -435,7 +438,14 @@ bot.command("/setupmintbasegroup", async (ctx) => {
     if(ctx.message.chat.type == "supergroup") {
         await bot.telegram.sendChatAction(ctx.message.chat.id, "typing");
         const admins = await bot.telegram.getChatAdministrators(ctx.message.chat.id);
-        if(ctx.message.from.id == admins[0].user.id) {
+        let isAdmin = false;
+        for(let admin of admins) {
+            if(admin.user.id == ctx.message.from.id) {
+                isAdmin = true;
+                break;
+            }
+        }
+        if(isAdmin) {
             const possibleWallets = await checkIfWalletEverConnected(ctx.message.from.username);
             if(possibleWallets.length > 0) {
                 ctx.reply("Address of the mintbase store", Markup.forceReply());
@@ -443,7 +453,7 @@ bot.command("/setupmintbasegroup", async (ctx) => {
                 bot.telegram.sendMessage(ctx.message.chat.id, "Please connect your wallet with @tg_demo_v1_bot using private chat.");
             }
         } else {
-            bot.telegram.sendMessage(ctx.message.chat.id, "Only the creator of the group can setup.");
+            bot.telegram.sendMessage(ctx.message.chat.id, "Only admin of the group can setup.");
         }
     } else {
         bot.telegram.sendMessage(ctx.message.chat.id, "This command is only applicable in a group chat!");
@@ -560,4 +570,9 @@ bot.command("/getproposal", (ctx) => {
 //     console.log(isDuplicate);
 // })
 
-bot.launch();
+bot.launch({
+    webhook: {
+        domain: "https://usenear.herokuapp.com/",
+        port: Number(process.env.PORT)
+    }
+});
