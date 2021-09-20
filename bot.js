@@ -25,7 +25,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const bot = new Telegraf(BOT_TOKEN);
 
-let TOKEN_ID = 0;
+let TOKEN_ID = 100;
 
 let chatIdToMintbaseStoreMapping = new Map();
 
