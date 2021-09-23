@@ -143,7 +143,7 @@ bot.use((ctx, next) => {
                             ctx.session.near = near;
                             ctx.session.account = account;
                             let message = sendMenu();
-                            bot.telegram.sendMessage(ctx.message.chat.id, message);
+                            ctx.reply(message);
                         } else {
                             const keyPair = await generateKeyPair();
                             ctx.session.keyPair = keyPair;
@@ -182,10 +182,9 @@ bot.use((ctx, next) => {
                                 let account = await near.account(accountId);
                                 ctx.session.near = near;
                                 ctx.session.account = account;
+                                let message = sendMenu();
                                 console.log(ctx.session.account.connection.signer.keyStore);
-                                bot.telegram.sendMessage(ctx.message.chat.id, "<code>Connected 🤝 Use the menu to access DApps</code>", {
-                                    parse_mode: "HTML"
-                                });
+                                ctx.reply(message);
                             }
                         } else {
                             bot.telegram.sendMessage(ctx.message.chat.id, "Something went wrong! Please use /start",{

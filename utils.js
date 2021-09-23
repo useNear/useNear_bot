@@ -35,7 +35,7 @@ const isKeyAdded = async (near, accountId, publicKey) => {
 }
 
 const sendMenu = () => {
-    let message = `\start - Connect Wallet\n/send - Send Near\n/getbalance - Get Near balance\n/mintnft - Mint NFT using NFT.Storage\n/transfernft - Transfer NFT\n/getmynfts - Get nft's minted using nft.storage\n/setupmintbasegroup - Setup group for Mintbase Minters\n/getminters - Get Minters for mintbase store\n/getmints - Get things minted on a mintbase store\n/addproposal - Add proposal to NEAR Week Sputnik DAO\n/getproposal - Get Proposal from NEAR Week Sputnik DAO`;
+    let message = `/start - Connect Wallet\n/send - Send Near\n/getbalance - Get Near balance\n/mintnft - Mint NFT using NFT.Storage\n/transfernft - Transfer NFT\n/getmynfts - Get nft's minted using NFT.Storage\n/setupmintbasegroup - Setup group for Mintbase Minters\n/getminters - Get Minters for mintbase store\n/getmints - Get things minted on a mintbase store\n/addproposal - Add proposal to NEAR Week Sputnik DAO\n/getproposal - Get Proposal from NEAR Week Sputnik DAO`;
     return message;
 }
 
