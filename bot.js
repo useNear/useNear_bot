@@ -45,7 +45,7 @@ bot.on("new_chat_members", async (ctx) => {
             ctx.kickChatMember(ctx.message.from.id, 0);
         }
     } else {
-        bot.telegram.sendMessage(ctx.message.chat.id, "Please connect wallet with @tg_demo_v1_bot using private chat.");
+        bot.telegram.sendMessage(ctx.message.chat.id, "Please connect wallet with @usenear_bot using private chat.");
         bot.telegram.sendMessage(ctx.message.chat.id, `@${ctx.message.from.id} was removed`);
         ctx.kickChatMember(ctx.message.from.id, 0);
     }
