@@ -34,6 +34,11 @@ const isKeyAdded = async (near, accountId, publicKey) => {
     return result ? 1 : 0;
 }
 
+const sendMenu = () => {
+    let message = `\start - Connect Wallet\n/send - Send Near\n/getbalance - Get Near balance\n/mintnft - Mint NFT using NFT.Storage\n/transfernft - Transfer NFT\n/getmynfts - Get nft's minted using nft.storage\n/setupmintbasegroup - Setup group for Mintbase Minters\n/getminters - Get Minters for mintbase store\n/getmints - Get things minted on a mintbase store\n/addproposal - Add proposal to NEAR Week Sputnik DAO\n/getproposal - Get Proposal from NEAR Week Sputnik DAO`;
+    return message;
+}
+
 const generateKeyPair = async () => {
     const keyPair = KeyPair.fromRandom("ed25519");
     return keyPair;
@@ -286,5 +291,6 @@ module.exports = {
     getProposal,
     getLastProposalId,
     getProposals,
-    checkDuplicateProposal
+    checkDuplicateProposal,
+    sendMenu
 }

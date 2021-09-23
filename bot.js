@@ -2,7 +2,7 @@ require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
 const nearAPI = require("near-api-js");
 
-const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal } = require("./utils");
+const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal, sendMenu } = require("./utils");
 const { utils } = require("near-api-js");
 const { connect, keyStores, KeyPair } = nearAPI;
 const LocalSession = require("telegraf-session-local");
@@ -142,9 +142,8 @@ bot.use((ctx, next) => {
                             let account = await near.account(accountId);
                             ctx.session.near = near;
                             ctx.session.account = account;
-                            bot.telegram.sendMessage(ctx.message.chat.id, "<code>Connected 🤝 Use the menu to access DApps</code>", {
-                                parse_mode: "HTML"
-                            });
+                            let message = sendMenu();
+                            bot.telegram.sendMessage(ctx.message.chat.id, message);
                         } else {
                             const keyPair = await generateKeyPair();
                             ctx.session.keyPair = keyPair;
@@ -388,6 +387,11 @@ bot.use((ctx, next) => {
 // });
 
 // COMMANDS
+bot.command("/menu", (ctx) => {
+    let message = sendMenu();
+    ctx.reply(message);
+});
+
 bot.command("/send", (ctx) => {
     if(ctx.session.account) {
         ctx.reply("Enter the accountId you want to send funds to", Markup.forceReply());
