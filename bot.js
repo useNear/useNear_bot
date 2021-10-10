@@ -1,15 +1,21 @@
 require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
 const nearAPI = require("near-api-js");
-
-const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal, sendMenu } = require("./utils");
 const { utils } = require("near-api-js");
+const fs = require("fs");
+const path = require("path");
+
+const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal, sendMenu, getAccountInfoFromStorage, authenticateParas, getLinkToImageFromTelegram, mintParasNFT, getParasNFTs } = require("./utils");
+
 const { connect, keyStores, KeyPair } = nearAPI;
 const LocalSession = require("telegraf-session-local");
+const { createContext } = require("vm");
+const { parseNearAmount } = require("near-api-js/lib/utils/format");
 
 
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(".near-credentials");
 let near;
+
 
 
 const config = {
@@ -248,10 +254,7 @@ bot.use((ctx, next) => {
                 case "Upload the image file":
                     if(ctx.message.photo) {
                         (async () => {
-                            await bot.telegram.sendChatAction(ctx.message.chat.id, "typing");
-                            let fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id
-                            let link = await bot.telegram.getFile(fileId);
-                            let actualLink = `https://api.telegram.org/file/bot${BOT_TOKEN}/${link.file_path}`;
+                            let actualLink = await getLinkToImageFromTelegram(bot, ctx);
                             let message = await ctx.reply("Uploading Metdata to IPFS...");
                             let url = await uploadToNFTStorage(ctx, ctx.session.nftTitle, ctx.session.nftDesc, actualLink);
                             let imageIPFSUrl = await getImageURLFromMetadata(url);
@@ -355,6 +358,42 @@ bot.use((ctx, next) => {
                             }
                         });
                     })();
+                    break;
+                case "Enter the name of the Paras NFT":
+                    ctx.session.parasNFT = { name: ctx.message.text };
+                    ctx.reply("Enter the description of the Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the description of the Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, description: ctx.message.text };
+                    ctx.reply("Enter the collection name for the Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the collection name for the Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, collection: ctx.message.text };
+                    ctx.reply("Enter the supply of the Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the supply of the Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, supply: ctx.message.text };
+                    ctx.reply("Enter the royalty for the Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the royalty for the Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, royalty: ctx.message.text };
+                    ctx.reply("Enter the amount of Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the amount of Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, amount: parseNearAmount(ctx.message.text) }
+                    ctx.reply("Upload the Artwork (Must be 64:89)", Markup.forceReply());
+                    break;
+                case "Upload the Artwork (Must be 64:89)":
+                    (
+                        async () => {
+                            if(ctx.message.photo) {
+                                let imageLink = await getLinkToImageFromTelegram(bot, ctx);
+                                let { account_id } = await getAccountInfoFromStorage(ctx.message.from.username); 
+                                let response = await mintParasNFT(ctx, ctx.session.parasNFT, account_id, imageLink);
+                                console.log(response);
+                            }
+                        }
+                    )();
                     break;
             }
         }
@@ -461,7 +500,7 @@ bot.command("/setupmintbasegroup", async (ctx) => {
     } else {
         bot.telegram.sendMessage(ctx.message.chat.id, "This command is only applicable in a group chat!");
     }
-});
+})
 
 bot.command("/getminters", async (ctx) => {
     if(ctx.message.chat.type == "supergroup") {
@@ -563,6 +602,22 @@ bot.command("/getproposal", (ctx) => {
     }
 })
 
+// Paras NFT
+bot.command("/authenticateParas", async (ctx) => {
+    const { account_id, public_key, private_key } = await getAccountInfoFromStorage(ctx.message.from.username);
+    ctx.session.parasAuthToken = await authenticateParas(account_id, public_key, private_key);
+    ctx.reply("Authentication Complete!");
+});
+
+bot.command("/mintParasNFT", async (ctx) => {
+    ctx.reply("Enter the name of the Paras NFT", Markup.forceReply());
+})
+
+bot.command("/getParasNFTs", async (ctx) => {
+    const { account_id } = await getAccountInfoFromStorage(ctx.message.from.username);
+    const response = await getParasNFTs(account_id);
+    console.log(response);
+})
 // bot.command("/getproposals", async (ctx) => {
 //     const daoContract = daoContractInstance(ctx.session.account);
 //     const proposals = await getProposals(daoContract);
@@ -574,8 +629,8 @@ bot.command("/getproposal", (ctx) => {
 // })
 
 bot.launch({
-    webhook: {
-        domain: "https://usenear.herokuapp.com/",
-        port: Number(process.env.PORT)
-    }
+    // webhook: {
+    //     domain: "https://usenear.herokuapp.com/",
+    //     port: Number(process.env.PORT | 3000)
+    // }
 });

@@ -15,6 +15,7 @@
     "mintbase": "^0.2.1",
     "near-api-js": "^0.42.0",
     "nft.storage": "^3.2.0",
+    "paras-sdk": "^1.0.1",
     "request": "^2.88.2",
     "telegraf": "^4.4.1",
     "telegraf-session-local": "^2.1.0"

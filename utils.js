@@ -8,6 +8,7 @@ const axios = require("axios");
 const nearAPI = require("near-api-js");
 const { API, API_BASE_NEAR_TESTNET } = require("mintbase");
 const { timingSafeEqual } = require("crypto");
+const ParasSDK = require("paras-sdk");
 
 const requestGet = util.promisify(request.get);
 const readFile = util.promisify(fs.readFile);
@@ -24,6 +25,23 @@ const mintbaseAPI = new API({
 });
 const NFT_CONTRACT_ADDRESS = "nft-final.test-testing.testnet";
 const SPUTNIK_DAO_ADDRESS = "near-week.sputnikv2.testnet";
+
+
+const parasSDK = new ParasSDK();
+
+parasSDK.init(
+    {
+        networkId: 'default',
+        nodeUrl: 'https://rpc.testnet.near.org',    
+        walletUrl: 'https://wallet.testnet.near.org', 
+        appName: 'Paras Testnet', // change it to your app name
+        contractName: parasSDK.CONTRACT_TESTNET,
+        apiUrl: parasSDK.API_TESTNET,
+    },
+    {
+        isServer: true
+    }
+);
 
 const isKeyAdded = async (near, accountId, publicKey) => {
     const account = await near.account(accountId);
@@ -61,22 +79,45 @@ const addKeyPair = async (ctx, networkId, accountId, keyPair) => {
     return content.private_key;
 }
 
-const uploadToNFTStorage = async (ctx, title, description, filePath) => {
-    
-    // writing file to local storage.
+const getLinkToImageFromTelegram = async (bot, ctx) => {
+    await bot.telegram.sendChatAction(ctx.message.chat.id, "typing");
+    let fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+    let link = await bot.telegram.getFile(fileId);
+    return `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${link.file_path}`;
+}
+
+const createFileFromImageLink = async (ctx, filePath) => {
     let response  = await requestGet({ url: filePath, encoding: "binary" });
+    await writeFile(`${__dirname}/nft_assets/nft_${ctx.from.username}.jpg`, response.body, "binary");
+}
+
+const readFileFromLocation = async (fileLocation) => {
+    const fileData = await readFile(fileLocation);
+    return fileData;
+}
+
+const fileObjectFromFiledata = async (fileData) => {
+    return new File([fileData], `${title}_${ctx.from.username}.jpg`, { type: `image/*` });
+}
+
+const uploadToNFTStorage = async (ctx, title, description, filePath) => {
+    // writing file to local storage.
+    await createFileFromImageLink(ctx, filePath);
+
     let titleSplit = title.split(" ");
     title = titleSplit.join("_");
-    await writeFile(`${__dirname}/nft_assets/nft_${ctx.from.username}.jpg`, response.body, "binary");
+
     let fileLocation = `${__dirname}/nft_assets/nft_${ctx.from.username}.jpg`;
     const fileLocationSplit = fileLocation.split(".");
     const fileType = fileLocationSplit[fileLocationSplit.length - 1];
-    const fileData = await readFile(fileLocation);
+    const fileData = await readFileFromLocation(fileLocation);
+    const fileObj = fileObjectFromFiledata(fileData);
     const metadata = await Client.store({
         name: title,
         description: description,
-        image: new File([fileData], `${title}_${ctx.from.username}.jpg`, { type: `image/*` })
+        image: fileObj
     });
+
     const metadataSplit = metadata.url.split("/", 4);
     const url = "https://ipfs.io/ipfs/" + metadataSplit[metadataSplit.length - 2] + '/'+ metadataSplit[metadataSplit.length - 1];
     await deleteFile(fileLocation);
@@ -269,11 +310,57 @@ const checkDuplicateProposal = async (proposalDescription, proposals) => {
     return duplicateProposals.length > 0;
 }
 
+const authenticateParas = async (account_id, public_key, private_key) => {
+    const cred = {
+        account_id,
+        public_key,
+        private_key
+    }
+    await parasSDK.login(cred);
+    const authToken = await parasSDK.authToken();
+    return authToken;
+}
+
+const getAccountInfoFromStorage = async (username) => {
+    const wallets = await readdir(`${__dirname}/.near-credentials/testnet`, "utf-8");
+    const possibleWallets = wallets.filter(wallet => {
+        return wallet.startsWith(username);
+    });
+    const data = await readFile(`./.near-credentials/testnet/${possibleWallets[0]}`, 'utf-8');
+    return JSON.parse(data);
+}
+
+
+
+const getParasNFTs = async (creatorId) => {
+    const query = { creatorId };
+    console.log(query);
+    let response = await parasSDK.getTokens(query, 0, 10);
+    return response;
+}
+
+const mintParasNFT = async (ctx, parasMintObj, ownerId, imageLink) => {
+    const mintObj = { ...parasMintObj, ownerId, quantity: "0" };
+    console.log(mintObj);
+    await createFileFromImageLink(ctx, imageLink);
+
+    const newToken = await parasSDK.mint(
+        {
+            file: fs.createReadStream(`${__dirname}/nft_assets/nft_${ctx.from.username}.jpg`),
+            ...mintObj
+        },
+        ctx.session.parasAuthToken
+    );
+
+    return newToken;
+}
+
 module.exports = {
     isKeyAdded,
     addKeyPair,
     checkIfKeyPairExists,
     generateKeyPair,
+    getLinkToImageFromTelegram,
     uploadToNFTStorage,
     nftContractInstance,
     nftMint,
@@ -292,5 +379,9 @@ module.exports = {
     getLastProposalId,
     getProposals,
     checkDuplicateProposal,
-    sendMenu
+    sendMenu,
+    getAccountInfoFromStorage,
+    authenticateParas,
+    mintParasNFT,
+    getParasNFTs
 }
