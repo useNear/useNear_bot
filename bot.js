@@ -1,15 +1,21 @@
 require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
 const nearAPI = require("near-api-js");
-
-const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal } = require("./utils");
 const { utils } = require("near-api-js");
+const fs = require("fs");
+const path = require("path");
+
+const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal, sendMenu, getAccountInfoFromStorage, authenticateParas, getLinkToImageFromTelegram, mintParasNFT, getParasNFTs } = require("./utils");
+
 const { connect, keyStores, KeyPair } = nearAPI;
 const LocalSession = require("telegraf-session-local");
+const { createContext } = require("vm");
+const { parseNearAmount } = require("near-api-js/lib/utils/format");
 
 
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(".near-credentials");
 let near;
+
 
 
 const config = {
@@ -25,7 +31,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const bot = new Telegraf(BOT_TOKEN);
 
-let TOKEN_ID = 0;
+let TOKEN_ID = 100;
 
 let chatIdToMintbaseStoreMapping = new Map();
 
@@ -33,7 +39,25 @@ let chatIdToMintbaseStoreMapping = new Map();
 bot.use((new LocalSession({ database: "example_db.json "})).middleware());
 
 
-bot.start(async (ctx) => {
+bot.on("new_chat_members", async (ctx) => {
+    const possibleWallets = await checkIfWalletEverConnected(ctx.message.from.username);
+    if(possibleWallets.length > 0) {
+        const mintbaseStoreAddress = chatIdToMintbaseStoreMapping.get(ctx.message.chat.id);
+        let isMinter = await checkIfPossibleWalletIsAMinter(possibleWallets, mintbaseStoreAddress);
+        if(isMinter) {
+            bot.telegram.sendMessage(ctx.message.chat.id, `Welcome @${ctx.message.from.username}!`);
+        } else {
+            bot.telegram.sendMessage(ctx.message.chat.id, `@${ctx.message.from.username} is not a minter at ${mintbaseStoreAddress}`);
+            ctx.kickChatMember(ctx.message.from.id, 0);
+        }
+    } else {
+        bot.telegram.sendMessage(ctx.message.chat.id, "Please connect wallet with @usenear_bot using private chat.");
+        bot.telegram.sendMessage(ctx.message.chat.id, `@${ctx.message.from.id} was removed`);
+        ctx.kickChatMember(ctx.message.from.id, 0);
+    }
+});
+
+bot.command("/start", async (ctx) => {
     ctx.session.near = near;
     ctx.session.account = undefined;
     bot.telegram.sendMessage(ctx.chat.id, "<code>Welcome to useNear!</code>", {
@@ -44,25 +68,10 @@ bot.start(async (ctx) => {
             ]
         }
     });
-});
-
+})
 
 // Bot hooks
-bot.on("new_chat_members", async (ctx) => {
-    const possibleWallets = await checkIfWalletEverConnected(ctx.message.from.username);
-    if(possibleWallets.length > 0) {
-        const mintbaseStoreAddress = chatIdToMintbaseStoreMapping.get(ctx.message.chat.id);
-        let isMinter = await checkIfPossibleWalletIsAMinter(possibleWallets, mintbaseStoreAddress);
-        if(isMinter) {
-            bot.telegram.sendMessage(ctx.message.chat.id, `Welcome @${ctx.message.from.username}!`);
-        } else {
-            ctx.kickChatMember(ctx.message.from.id, 0);
-            bot.telegram.sendMessage(ctx.message.chat.id, `@${ctx.message.from.username} is not a minter at ${mintbaseStoreAddress}`);
-        }
-    } else {
-        bot.telegram.sendMessage(ctx.message.chat.id, "Please connect wallet with @tg_demo_v1_bot using private chat.");
-    }
-});
+
 
 
 bot.on("left_chat_member", (ctx) => {
@@ -139,9 +148,8 @@ bot.use((ctx, next) => {
                             let account = await near.account(accountId);
                             ctx.session.near = near;
                             ctx.session.account = account;
-                            bot.telegram.sendMessage(ctx.message.chat.id, "<code>Connected 🤝 Use the menu to access DApps</code>", {
-                                parse_mode: "HTML"
-                            });
+                            let message = sendMenu();
+                            ctx.reply(message);
                         } else {
                             const keyPair = await generateKeyPair();
                             ctx.session.keyPair = keyPair;
@@ -160,7 +168,7 @@ bot.use((ctx, next) => {
                     break;
                 case "Enter the account you used to connect":
                     (async () => {
-                        bot.telegram.sendChatAction("typing");
+                        bot.telegram.sendChatAction(ctx.message.chat.id, "typing");
                         const accountId = ctx.message.text;
                         if(accountId && ctx.session.keyPair) {
                             let near = await connect(config);
@@ -180,10 +188,9 @@ bot.use((ctx, next) => {
                                 let account = await near.account(accountId);
                                 ctx.session.near = near;
                                 ctx.session.account = account;
+                                let message = sendMenu();
                                 console.log(ctx.session.account.connection.signer.keyStore);
-                                bot.telegram.sendMessage(ctx.message.chat.id, "<code>Connected 🤝 Use the menu to access DApps</code>", {
-                                    parse_mode: "HTML"
-                                });
+                                ctx.reply(message);
                             }
                         } else {
                             bot.telegram.sendMessage(ctx.message.chat.id, "Something went wrong! Please use /start",{
@@ -247,10 +254,7 @@ bot.use((ctx, next) => {
                 case "Upload the image file":
                     if(ctx.message.photo) {
                         (async () => {
-                            await bot.telegram.sendChatAction(ctx.message.chat.id, "typing");
-                            let fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id
-                            let link = await bot.telegram.getFile(fileId);
-                            let actualLink = `https://api.telegram.org/file/bot${BOT_TOKEN}/${link.file_path}`;
+                            let actualLink = await getLinkToImageFromTelegram(bot, ctx);
                             let message = await ctx.reply("Uploading Metdata to IPFS...");
                             let url = await uploadToNFTStorage(ctx, ctx.session.nftTitle, ctx.session.nftDesc, actualLink);
                             let imageIPFSUrl = await getImageURLFromMetadata(url);
@@ -355,6 +359,42 @@ bot.use((ctx, next) => {
                         });
                     })();
                     break;
+                case "Enter the name of the Paras NFT":
+                    ctx.session.parasNFT = { name: ctx.message.text };
+                    ctx.reply("Enter the description of the Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the description of the Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, description: ctx.message.text };
+                    ctx.reply("Enter the collection name for the Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the collection name for the Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, collection: ctx.message.text };
+                    ctx.reply("Enter the supply of the Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the supply of the Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, supply: ctx.message.text };
+                    ctx.reply("Enter the royalty for the Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the royalty for the Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, royalty: ctx.message.text };
+                    ctx.reply("Enter the amount of Paras NFT", Markup.forceReply());
+                    break;
+                case "Enter the amount of Paras NFT":
+                    ctx.session.parasNFT = { ...ctx.session.parasNFT, amount: parseNearAmount(ctx.message.text) }
+                    ctx.reply("Upload the Artwork (Must be 64:89)", Markup.forceReply());
+                    break;
+                case "Upload the Artwork (Must be 64:89)":
+                    (
+                        async () => {
+                            if(ctx.message.photo) {
+                                let imageLink = await getLinkToImageFromTelegram(bot, ctx);
+                                let { account_id } = await getAccountInfoFromStorage(ctx.message.from.username); 
+                                let response = await mintParasNFT(ctx, ctx.session.parasNFT, account_id, imageLink);
+                                console.log(response);
+                            }
+                        }
+                    )();
+                    break;
             }
         }
     }
@@ -385,6 +425,11 @@ bot.use((ctx, next) => {
 // });
 
 // COMMANDS
+bot.command("/menu", (ctx) => {
+    let message = sendMenu();
+    ctx.reply(message);
+});
+
 bot.command("/send", (ctx) => {
     if(ctx.session.account) {
         ctx.reply("Enter the accountId you want to send funds to", Markup.forceReply());
@@ -435,7 +480,14 @@ bot.command("/setupmintbasegroup", async (ctx) => {
     if(ctx.message.chat.type == "supergroup") {
         await bot.telegram.sendChatAction(ctx.message.chat.id, "typing");
         const admins = await bot.telegram.getChatAdministrators(ctx.message.chat.id);
-        if(ctx.message.from.id == admins[0].user.id) {
+        let isAdmin = false;
+        for(let admin of admins) {
+            if(admin.user.id == ctx.message.from.id) {
+                isAdmin = true;
+                break;
+            }
+        }
+        if(isAdmin) {
             const possibleWallets = await checkIfWalletEverConnected(ctx.message.from.username);
             if(possibleWallets.length > 0) {
                 ctx.reply("Address of the mintbase store", Markup.forceReply());
@@ -443,12 +495,12 @@ bot.command("/setupmintbasegroup", async (ctx) => {
                 bot.telegram.sendMessage(ctx.message.chat.id, "Please connect your wallet with @tg_demo_v1_bot using private chat.");
             }
         } else {
-            bot.telegram.sendMessage(ctx.message.chat.id, "Only the creator of the group can setup.");
+            bot.telegram.sendMessage(ctx.message.chat.id, "Only admin of the group can setup.");
         }
     } else {
         bot.telegram.sendMessage(ctx.message.chat.id, "This command is only applicable in a group chat!");
     }
-});
+})
 
 bot.command("/getminters", async (ctx) => {
     if(ctx.message.chat.type == "supergroup") {
@@ -550,6 +602,22 @@ bot.command("/getproposal", (ctx) => {
     }
 })
 
+// Paras NFT
+bot.command("/authenticateParas", async (ctx) => {
+    const { account_id, public_key, private_key } = await getAccountInfoFromStorage(ctx.message.from.username);
+    ctx.session.parasAuthToken = await authenticateParas(account_id, public_key, private_key);
+    ctx.reply("Authentication Complete!");
+});
+
+bot.command("/mintParasNFT", async (ctx) => {
+    ctx.reply("Enter the name of the Paras NFT", Markup.forceReply());
+})
+
+bot.command("/getParasNFTs", async (ctx) => {
+    const { account_id } = await getAccountInfoFromStorage(ctx.message.from.username);
+    const response = await getParasNFTs(account_id);
+    console.log(response);
+})
 // bot.command("/getproposals", async (ctx) => {
 //     const daoContract = daoContractInstance(ctx.session.account);
 //     const proposals = await getProposals(daoContract);
@@ -560,4 +628,9 @@ bot.command("/getproposal", (ctx) => {
 //     console.log(isDuplicate);
 // })
 
-bot.launch();
+bot.launch({
+    // webhook: {
+    //     domain: "https://usenear.herokuapp.com/",
+    //     port: Number(process.env.PORT | 3000)
+    // }
+});
