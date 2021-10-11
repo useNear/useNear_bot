@@ -5,7 +5,7 @@ const { utils } = require("near-api-js");
 const fs = require("fs");
 const path = require("path");
 
-const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal, sendMenu, getAccountInfoFromStorage, authenticateParas, getLinkToImageFromTelegram, mintParasNFT, getParasNFTs } = require("./utils");
+const { isKeyAdded, checkIfKeyPairExists, addKeyPair, generateKeyPair, uploadToNFTStorage, nftContractInstance, nftMint, getImageURLFromMetadata, checkIfWalletEverConnected, checkIfPossibleWalletIsAMinter, getMintersForMintbaseStore, getUsernameByAccountId, getMintsForMintbaseStore, getMetadataByThingId, getNftfromNFTContractAddress, transferNft, addProposal, daoContractInstance, getProposal, getProposals, checkDuplicateProposal, sendMenu, getAccountInfoFromStorage, authenticateParas, getLinkToImageFromTelegram, mintParasNFT, getParasNFTs, getRefPools } = require("./utils");
 
 const { connect, keyStores, KeyPair } = nearAPI;
 const LocalSession = require("telegraf-session-local");
@@ -617,6 +617,42 @@ bot.command("/getParasNFTs", async (ctx) => {
     const { account_id } = await getAccountInfoFromStorage(ctx.message.from.username);
     const response = await getParasNFTs(account_id);
     console.log(response);
+});
+
+
+bot.command("/getPools", async (ctx) => {
+    let response = await getRefPools(ctx.session.account);
+    let tokenNames = new Map();
+    for await (let pool of response) {
+        for(let i = 0; i < pool.token_account_ids.length; i++) {
+            if(!tokenNames.has(pool.token_account_ids[i])) {
+                let token = new nearAPI.Contract(
+                    ctx.session.account,
+                    pool.token_account_ids[i],
+                    {
+                        viewMethods: ["ft_metadata"],
+                        sender: ctx.session.account
+                    }
+                );
+                let metadata = await token.ft_metadata();
+                tokenNames.set(pool.token_account_ids[i], metadata.symbol);
+            } 
+        }
+    }
+
+    console.log(tokenNames);
+
+    let buttons = response.map(pool => {
+        return [{ text: `${tokenNames.get(pool.token_account_ids[0])} -> ${tokenNames.get(pool.token_account_ids[1])}`, callback_data: `${tokenNames[pool.token_account_ids[0]]}`}]
+    });
+    
+
+
+    bot.telegram.sendMessage(ctx.message.chat.id, "Please select one of the pools below", {
+        reply_markup: {
+            inline_keyboard: buttons
+        }
+    });
 })
 // bot.command("/getproposals", async (ctx) => {
 //     const daoContract = daoContractInstance(ctx.session.account);
