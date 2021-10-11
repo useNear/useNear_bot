@@ -25,6 +25,7 @@ const mintbaseAPI = new API({
 });
 const NFT_CONTRACT_ADDRESS = "nft-final.test-testing.testnet";
 const SPUTNIK_DAO_ADDRESS = "near-week.sputnikv2.testnet";
+const REF_FINANCE_TESTNET = "ref-finance-101.testnet";
 
 
 const parasSDK = new ParasSDK();
@@ -355,6 +356,19 @@ const mintParasNFT = async (ctx, parasMintObj, ownerId, imageLink) => {
     return newToken;
 }
 
+const getRefPools = async (account) => {
+    const refContract = new nearAPI.Contract(
+        account,
+        REF_FINANCE_TESTNET,
+        {
+            viewMethods: ["get_pools"],
+            sender: account
+        }
+    );
+    const response = await refContract.get_pools({ from_index: 0, limit: 5 });
+    return response;
+}
+
 module.exports = {
     isKeyAdded,
     addKeyPair,
@@ -383,5 +397,6 @@ module.exports = {
     getAccountInfoFromStorage,
     authenticateParas,
     mintParasNFT,
-    getParasNFTs
+    getParasNFTs,
+    getRefPools
 }
